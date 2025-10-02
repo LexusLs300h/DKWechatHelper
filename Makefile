@@ -1,24 +1,10 @@
-THEOS_DEVICE_IP = localhost
-THEOS_DEVICE_PORT = 2222
-ARCHS = arm64
-TARGET = iphone:latest:8.0  # 明确SDK版本
-
-BUNDLE_NAME = com.swiftyper.wechatredenvelop
-com.swiftyper.wechatredenvelop_INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries
-
 include $(THEOS)/makefiles/common.mk
-include $(THEOS)/makefiles/bundle.mk
 
-SRC = $(wildcard src/*.m)
-
-TWEAK_NAME = WeChatRedEnvelop
-WeChatRedEnvelop_FILES = $(wildcard src/*.m) src/Tweak.xm
-WeChatRedEnvelop_FRAMEWORKS = UIKit Foundation CoreGraphics  # 补充常用框架
-WeChatRedEnvelop_FRAMEWORKS = UIKit
-# 如需私有框架，添加以下行（示例）：
-# WeChatRedEnvelop_PRIVATE_FRAMEWORKS = ChatKit
+TWEAK_NAME = YourTweakName
+YourTweakName_FILES = Tweak.xm
+YourTweakName_FRAMEWORKS = UIKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+include $(THEOS_MAKE_PATH)/package.mk
 
-after-install::
-	install.exec "killall -9 WeChat"
+PACKAGE_VERSION = 1.0
