@@ -31,6 +31,9 @@ jobs:
         run: |
           echo "$(brew --prefix)/opt/make/libexec/gnubin" >> $GITHUB_PATH
 
+      - name: Clean up packages folder
+        run: rm -rf packages
+
       - name: Build package
         run: |
           rm -f packages/*
