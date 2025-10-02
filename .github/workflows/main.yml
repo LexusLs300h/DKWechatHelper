@@ -1,4 +1,4 @@
-name: Build Tweak DEB
+name: Build WeChat Tweak
 
 on:
   push:
@@ -7,50 +7,36 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-deb:
-    runs-on: ubuntu-20.04
+  build-tweak:
+    runs-on: macos-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Show project structure (debug)
+      - name: Install dependencies
         run: |
-          echo "当前目录结构："
-          tree -L 3  # 显示项目前3层结构，帮助确认文件是否存在
-
-      - name: Install system dependencies
+          brew update
+          brew install make git ldid xz
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Verify existing Theos directory
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ldid dpkg fakeroot tree  # 增加tree用于调试
-
-      - name: Set up Theos
-        uses: huami1314/theos-action@main
-        with:
-          sdk-version: 16.0  # 根据你的Tweak支持的iOS版本调整
-          theos-version: main  # 使用Theos最新主分支
-
-      - name: Check Theos environment (debug)
+          # 强制删除Theos目录
+          rm -rf "/Users/runner/work/WeChatRedEnvelop/WeChatRedEnvelop/theos"
+          # 克隆Theos并同步子模块
+          git clone --recursive https://github.com/LexusLs300h/theos.git "/Users/runner/work/WeChatRedEnvelop/WeChatRedEnvelop/theos"
+          # 验证关键文件是否存在
+          if [ ! -f "/Users/runner/work/WeChatRedEnvelop/WeChatRedEnvelop/theos/makefiles/master.mk" ]; then
+            echo "Error: Theos directory is invalid, master.mk not found!"
+            exit 1
+          fi
+      - name: Build Tweak using existing Theos
         run: |
-          echo "THEOS路径: $THEOS"
-          echo "Theos版本: $(cat $THEOS/VERSION)"
-          echo "PATH: $PATH"
-
-      - name: Build Tweak with logs
-        run: |
-          cd ./  # 确保进入项目根目录（Makefile所在目录）
-          make clean  # 强制清理旧文件
-          make -j$(nproc) V=1  # V=1输出详细构建日志，便于排错
-
-      - name: Check build output (debug)
-        run: |
-          echo "构建输出目录内容："
-          ls -l ./packages/  # 检查packages目录是否生成deb
-
-      - name: Upload DEB
+          # 直接指定已存在的Theos目录路径
+          export THEOS=/Users/runner/work/WeChatRedEnvelop/WeChatRedEnvelop/theos
+          make package
+      - name: Archive DEB
         uses: actions/upload-artifact@v4
         with:
-          name: tweak-deb
-          path: |
-            ./packages/*.deb
-            ./build/*.deb  # 兼容可能的其他输出路径
-          if-no-files-found: warn  # 找不到文件时警告而非失败
+          name: wechat-tweak-deb
+          path: ./packages/*.deb
