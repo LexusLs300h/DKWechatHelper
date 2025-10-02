@@ -1,48 +1,56 @@
-name: build deb
+name: Build Tweak DEB
 
-on: 
+on:
   push:
+    branches: [ main, master ]
   pull_request:
+    branches: [ main, master ]
 
 jobs:
-  build:
-    runs-on: macos-latest
-
+  build-deb:
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v4.2.2
-        with:
-          submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Check cache
+      - name: Show project structure (debug)
         run: |
-          echo upstream_heads=`git ls-remote https://github.com/roothide/theos | head -n 1 | cut -f 1`-`git ls-remote https://github.com/theos/sdks | head -n 1 | cut -f 1` >> $GITHUB_ENV
+          echo "当前目录结构："
+          tree -L 3  # 显示项目前3层结构，帮助确认文件是否存在
 
-      - name: Use cache
-        id: cache
-        uses: actions/cache@v4.2.1
-        with:
-          path: ${{ github.workspace }}/theos
-          key: ${{ runner.os }}-${{ env.upstream_heads }}
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ldid dpkg fakeroot tree  # 增加tree用于调试
 
-      - name: Prepare Theos
+      - name: Set up Theos
         uses: huami1314/theos-action@main
-
-      - name: Setup GNU Make
-        run: |
-          echo "$(brew --prefix)/opt/make/libexec/gnubin" >> $GITHUB_PATH
-
-      - name: Clean up packages folder
-        run: rm -rf packages
-
-      - name: Build package
-        run: |
-          rm -f packages/*
-          make package FINALPACKAGE=1 -j$(sysctl -n hw.ncpu)
-          make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1 -j$(sysctl -n hw.ncpu)
-          make package THEOS_PACKAGE_SCHEME=roothide FINALPACKAGE=1 -j$(sysctl -n hw.ncpu)
-
-      - name: Upload specific Deb packages
-        uses: actions/upload-artifact@v4.6.0
         with:
-          name: WechatHelper
-          path: ${{ github.workspace }}/packages/*.deb
+          sdk-version: 16.0  # 根据你的Tweak支持的iOS版本调整
+          theos-version: main  # 使用Theos最新主分支
+
+      - name: Check Theos environment (debug)
+        run: |
+          echo "THEOS路径: $THEOS"
+          echo "Theos版本: $(cat $THEOS/VERSION)"
+          echo "PATH: $PATH"
+
+      - name: Build Tweak with logs
+        run: |
+          cd ./  # 确保进入项目根目录（Makefile所在目录）
+          make clean  # 强制清理旧文件
+          make -j$(nproc) V=1  # V=1输出详细构建日志，便于排错
+
+      - name: Check build output (debug)
+        run: |
+          echo "构建输出目录内容："
+          ls -l ./packages/  # 检查packages目录是否生成deb
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweak-deb
+          path: |
+            ./packages/*.deb
+            ./build/*.deb  # 兼容可能的其他输出路径
+          if-no-files-found: warn  # 找不到文件时警告而非失败
